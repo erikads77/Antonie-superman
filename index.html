@@ -250,7 +250,7 @@ function score(x,y,msg){
   W.done++;P.pose=1.1;beep(660+W.done*22);setTimeout(()=>beep(880+W.done*22),90);
   burst(x,y,16,['#ffe27a','#fff','#ff7a1a','#7fd66b'],240);floats.push({x,y:y-20,t:0,txt:W.done+' / '+W.total});
   hint(msg);updateHud();
-  if(W.done>=W.total){setTimeout(()=>{if(state==='play'){state='outro';oT=0;keys.left=keys.right=keys.up=false;$('loc').hidden=true;$('hint').classList.add('off');
+  if(W.done>=W.total){setTimeout(()=>{if(state==='play'){state='outro';oT=0;P.mode='rol';P.carry=null;updateHud();keys.left=keys.right=keys.up=false;$('loc').hidden=true;$('hint').classList.add('off');
     const s=Math.round(clock);$('winText').textContent='Alle 20 klussen aan de Welle gedaan in '+Math.floor(s/60)+' min '+(s%60)+' s, met '+W.koekN+' van de '+KOEK+' plakken Deventer koek. SuperTony kijkt nu met zijn cavia vanaf de Pleiaden toe.';
     [523,659,784,1047,784,1047].forEach((f,i)=>setTimeout(()=>beep(f),i*130));
     }},1800);}
