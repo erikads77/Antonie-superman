@@ -22,4 +22,15 @@ Er zijn 20 taken: afval oprapen, bomen planten, deelscooters opruimen, katten re
 opritten leggen en pakketten bezorgen. Hoe meer er klaar is, hoe kleuriger Deventer wordt.
 Onderweg liggen 12 plakken Deventer koek die de cape opladen.
 
+## Punten en hartjes
+
+Elke klus levert 500 punten op, elke plak koek 150. Wie alles afmaakt krijgt een tijdbonus en 500 punten per
+overgebleven hartje. Je begint met drie hartjes: fatbikes op de kade en meeuwen in de lucht kosten er elk een.
+Vlieg over een fatbike heen, of ram hem op snelheid met de scootmobiel (300 punten). Zonder hartjes is het spel voorbij.
+
+Na afloop vul je je naam in voor het scorebord. Dat wordt op het eigen apparaat bewaard. Met "Daag iemand uit"
+stuur je een link met je naam en score mee; de ontvanger ziet die als doel op het titelscherm.
+
+Er zitten zes geheimen in het spel verstopt.
+
 Is alles gedaan, dan vliegt SuperTony naar de Pleiaden, waar hij met zijn cavia toekijkt op de vrede op aarde.

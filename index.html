@@ -54,6 +54,18 @@ canvas#game{position:absolute;inset:0;width:100%;height:100%;display:block}
 .overlay.end h2{font-size:clamp(1.3rem,4.5vw,2.6rem)}
 .overlay.end p{font-size:.8rem;line-height:1.3}
 .overlay.end .go{font-size:1.15rem;padding:4px 20px}
+.big{font-family:var(--display);font-size:clamp(1.6rem,6vw,2.6rem);letter-spacing:.04em;line-height:1}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center}
+.row label{font-size:.85rem;color:var(--muted)}
+.row input{font:inherit;font-weight:800;color:var(--ink);background:var(--paper);border:2px solid var(--line);border-radius:10px;padding:6px 10px;width:11em;max-width:60vw}
+.go.small{font-size:1.15rem;padding:4px 18px}
+.go.alt{background:var(--teal);color:var(--paper)}
+.scores{list-style:none;counter-reset:r;margin:0;padding:0;width:min(100%,340px);font-variant-numeric:tabular-nums;text-align:left}
+.scores li{counter-increment:r;display:flex;gap:10px;padding:3px 10px;border-radius:8px;font-size:.9rem}
+.scores li::before{content:counter(r) ".";width:1.6em;color:var(--muted)}
+.scores li b{margin-left:auto}
+.scores li.me{background:var(--cape);color:var(--ink)}.scores li.me::before{color:var(--ink)}
+.scores li.empty{color:var(--muted)}.scores li.empty::before{content:""}
 .overlay .sub{color:var(--muted);font-size:.85rem}
 .overlay canvas{width:min(100%,460px);height:auto}
 .duo{display:flex;gap:6px 22px;flex-wrap:wrap;justify-content:center;font-size:.85rem;color:var(--muted)}
@@ -74,9 +86,11 @@ button:focus-visible{outline:3px solid var(--cape);outline-offset:2px}
 <body>
 <div class="app">
   <div class="hud">
-    <h1>SuperTony</h1>
+    <h1 id="logo">SuperTony</h1>
     <div class="meter"><span>Wereld</span><div class="bar"><i id="mWorld"></i></div><span id="mCount">0 / 20</span></div>
     <div class="meter small"><span>Cape</span><div class="bar cape"><i id="mCape"></i></div></div>
+    <span class="chip ghost" id="mLives" aria-label="Hartjes">♥♥♥</span>
+    <span class="chip ghost" id="mScore">0</span>
     <span class="chip ghost" id="mKoek">Koek 0 / 12</span>
     <span class="chip" id="mMode">Rolstoel</span>
   </div>
@@ -92,13 +106,24 @@ button:focus-visible{outline:3px solid var(--cape);outline-offset:2px}
         <span><b>Rolstoel</b> wendbaar, vliegt met de cape</span>
         <span><b>Scootmobiel</b> snel, duwt en bezorgt</span>
       </div>
+      <p class="sub" id="tRival" hidden></p>
+      <ol class="scores" id="tList"></ol>
       <button class="go" id="start">Start</button>
       <p class="sub">Pijltjes of A/D rijden · Omhoog of spatie vliegen · X wisselen · E actie</p>
     </div>
     <div class="overlay end" id="win" hidden>
       <h2>Vrede op aarde</h2>
       <p id="winText"></p>
-      <button class="go" id="again">Nog een keer</button>
+      <button class="go" id="again">Naar de scores</button>
+    </div>
+    <div class="overlay" id="board" hidden>
+      <h2 id="bTitle"></h2>
+      <p class="big" id="bScore"></p>
+      <p class="sub" id="bDetail"></p>
+      <form class="row" id="bForm"><label for="bName">Naam</label><input id="bName" maxlength="12" autocomplete="off" placeholder="Je naam"><button class="go small" type="submit">Opslaan</button></form>
+      <ol class="scores" id="bList"></ol>
+      <div class="row"><button class="go" id="replay" type="button">Nog een keer</button><button class="go alt" id="share" type="button">Daag iemand uit</button></div>
+      <p class="sub" id="bShare" hidden></p>
     </div>
   </div>
   <div class="pad">
@@ -147,7 +172,7 @@ function drawHero(c,o){
   else{line(c,[-35,-52,-39,-90],7,C.navy);}
   // cape
   const lift=Math.max(s,o.fly||0), ex=sh.x-16-lift*54, ey=sh.y+54-lift*36+wave*(2+lift*5);
-  c.fillStyle=C.cape;c.beginPath();c.moveTo(sh.x+3,sh.y-5);
+  c.fillStyle=capeFill(c,o.t);c.beginPath();c.moveTo(sh.x+3,sh.y-5);
   c.quadraticCurveTo(sh.x-14-lift*20,sh.y+6,ex-8,ey);c.lineTo(ex+14,ey+8+wave*2);
   c.quadraticCurveTo(sh.x-8,sh.y+34,sh.x-2,sh.y+26);c.closePath();c.fill();
   c.strokeStyle=C.capeD;c.lineWidth=1.5;c.stroke();
@@ -193,6 +218,7 @@ function drawHero(c,o){
     line(c,[sh.x+1,sh.y+2,2,-70,25,-76],8,C.teal);disc(c,27,-76,4.5,C.skin);
   }
   c.restore();
+  if(o.cavia){c.save();c.scale(f,1);drawCavia(c,rol?13:1,rol?-55:-62,.6,o.t,1);c.restore();}
   drawHead(c,head.x*f,head.y);
 }
 // The face is never mirrored, so the eye patch always stays on the same eye.
@@ -214,6 +240,12 @@ function drawHead(c,x,y){
   c.restore();
 }
 
+let capeMode='';
+function capeFill(c,t){
+  if(capeMode==='rainbow')return 'hsl('+(t*140%360)+',95%,58%)';
+  if(capeMode==='kowet'){const g=c.createLinearGradient(-78,0,2,0);for(let i=0;i<8;i++){const k=i%2?'#f2c230':'#c8202a';g.addColorStop(i/8,k);g.addColorStop((i+1)/8-.001,k);}return g;}
+  return C.cape;
+}
 /* ---------- world ---------- */
 let W, P, state='title', hintT=0, clock=0, pShown=0, viewW=640, camX=0, sparks=[], floats=[], shake=0, fwT=0, dustT=0, oT=0;
 function resetWorld(){
@@ -226,9 +258,10 @@ function resetWorld(){
     cats:[1350,3620].map(x=>({x,saved:false})),
     packs:[{x:1700,tx:2940,st:0,who:'mevrouw De Wit',what:'De doos Deventer koek',col:'#c8362e'},{x:3800,tx:4860,st:0,who:'meneer Jansen',what:'De stapel boeken van de boekenmarkt',col:'#3d6fa8'}],
     koekN:0,
+    haz:[],tBike:11,tGull:16,lives:3,score:0,cavia:false,bell:false,rained:false,seen:{},
     done:0,total:20
   };
-  P={x:300,alt:0,vx:0,va:0,mode:'rol',f:1,energy:1,wheel:0,pose:0,ground:true,carry:null,puff:0};
+  P={x:300,alt:0,vx:0,va:0,mode:'rol',f:1,energy:1,wheel:0,pose:0,ground:true,carry:null,puff:0,inv:0};
   clock=0;pShown=0;sparks=[];floats=[];shake=0;updateHud();
 }
 function groundAt(x){
@@ -247,11 +280,12 @@ function groundAt(x){
 }
 function hint(t,d){const h=$('hint');if(h.textContent!==t)h.textContent=t;h.classList.remove('off');hintT=d||3.2;}
 function score(x,y,msg){
-  W.done++;P.pose=1.1;beep(660+W.done*22);setTimeout(()=>beep(880+W.done*22),90);
+  W.done++;W.score+=500;P.pose=1.1;beep(660+W.done*22);setTimeout(()=>beep(880+W.done*22),90);
   burst(x,y,16,['#ffe27a','#fff','#ff7a1a','#7fd66b'],240);floats.push({x,y:y-20,t:0,txt:W.done+' / '+W.total});
   hint(msg);updateHud();
   if(W.done>=W.total){setTimeout(()=>{if(state==='play'){state='outro';oT=0;P.mode='rol';P.carry=null;updateHud();keys.left=keys.right=keys.up=false;$('loc').hidden=true;$('hint').classList.add('off');
-    const s=Math.round(clock);$('winText').textContent='Alle 20 klussen aan de Welle gedaan in '+Math.floor(s/60)+' min '+(s%60)+' s, met '+W.koekN+' van de '+KOEK+' plakken Deventer koek. SuperTony kijkt nu met zijn cavia vanaf de Pleiaden toe.';
+    const s=Math.round(clock);W.tb=Math.max(0,240-s)*20;W.hb=W.lives*500;W.score+=W.tb+W.hb;W.haz=[];updateHud();
+    $('winText').textContent='Alle 20 klussen aan de Welle gedaan in '+Math.floor(s/60)+' min '+(s%60)+' s. SuperTony kijkt nu met zijn cavia vanaf de Pleiaden toe.';
     [523,659,784,1047,784,1047].forEach((f,i)=>setTimeout(()=>beep(f),i*130));
     }},1800);}
 }
@@ -259,6 +293,8 @@ function burst(x,y,n,cols,sp){for(let i=0;i<n;i++){const a=rnd(i*3.3+x+clock)*6.
   sparks.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-60,t:0,life:.9,col:cols[i%cols.length],r:3});}}
 function updateHud(){
   $('mKoek').textContent='Koek '+W.koekN+' / '+KOEK;
+  $('mLives').textContent='♥'.repeat(Math.max(0,W.lives))+'♡'.repeat(Math.max(0,3-W.lives));
+  $('mScore').textContent=fmt(W.score)+(rival?' / '+fmt(rival.s):'');
   $('mWorld').style.width=(W.done/W.total*100)+'%';$('mCount').textContent=W.done+' / '+W.total;
   $('mCape').style.width=(P.energy*100)+'%';$('mMode').textContent=P.mode==='rol'?'Rolstoel':'Scootmobiel';
 }
@@ -282,7 +318,19 @@ function doAct(){
   hint('Hier valt nu niets te doen.',1.6);
 }
 const keymap={ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right',ArrowUp:'up',w:'up',W:'up',' ':'up'};
+let typed='', seq=[], taps=[];
+const KONAMI='arrowup,arrowup,arrowdown,arrowdown,arrowleft,arrowright,arrowleft,arrowright,b,a';
+function rainbow(){capeMode=capeMode==='rainbow'?'':'rainbow';drawPortrait();if(egg('cape'))hint('Regenboogcape! Zo zien ze je vanaf de Worp ook aankomen.',4);bells([784,988,1175,1568]);}
+$('logo').addEventListener('click',()=>{const n=performance.now();taps=taps.filter(t=>n-t<2500);taps.push(n);if(taps.length>=5){taps=[];rainbow();}});
 addEventListener('keydown',e=>{
+  if(document.activeElement&&document.activeElement.tagName==='INPUT')return;
+  const kk=e.key.toLowerCase();seq.push(kk);seq=seq.slice(-10);if(seq.join(',')===KONAMI){seq=[];rainbow();}
+  if(kk.length===1){typed=(typed+kk).slice(-8);
+    if(typed.endsWith('kowet')){capeMode='kowet';drawPortrait();egg('kowet');hint('Kowet! Rood en geel, de cape van de Adelaarshorst.',4);bells([523,659,784]);}
+    if(typed.endsWith('dickens')){dickens=true;egg('dickens');hint('Dickens Festijn! Sneeuw en hoge hoeden op de Welle.',4);bells([659,784,988,784]);}
+    if(typed.endsWith('koek')&&state==='play'&&!W.rained){W.rained=true;egg('regen');hint('Koekregen! Het regent Deventer koek.',4);
+      for(let i=0;i<18;i++)W.koek.push({x:clamp(camX+30+rnd(i+clock)*(viewW-60),60,WORLD-60),alt:230+rnd(i*5+clock)*260,got:false,bonus:true});}
+  }
   if(state==='title'&&(e.key==='Enter'||e.key===' ')){e.preventDefault();return start();}
   if(state!=='play')return;
   if(keymap[e.key]){keys[keymap[e.key]]=true;e.preventDefault();}
@@ -298,13 +346,84 @@ document.querySelectorAll('.pad button').forEach(b=>{
   ['pointerup','pointerleave','pointercancel'].forEach(n=>b.addEventListener(n,off));
   b.addEventListener('contextmenu',e=>e.preventDefault());
 });
+const eggs=new Set();let dickens=new Date().getMonth()===11;
+function egg(n){if(eggs.has(n))return false;eggs.add(n);return true;}
+function bells(fs){fs.forEach((f,i)=>setTimeout(()=>{try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();[1,2.76].forEach((m,j)=>{const o=ac.createOscillator(),g=ac.createGain();
+  o.type='sine';o.frequency.value=f*m;g.gain.setValueAtTime(j?.03:.09,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+1.1);o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+1.2);});}catch(e){}},i*190));}
 let ac;
 function beep(f){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();const o=ac.createOscillator(),g=ac.createGain();
   o.type='triangle';o.frequency.value=f;g.gain.setValueAtTime(.08,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+.18);
   o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+.2);}catch(e){}}
-function start(){resetWorld();state='play';$('loc').hidden=false;$('title').hidden=true;$('win').hidden=true;
+function start(){resetWorld();state='play';$('loc').hidden=false;$('title').hidden=true;$('win').hidden=true;$('board').hidden=true;
   hint('Deventer heeft je nodig, SuperTony. Rol vanaf de Zwarte Silo naar de Welle en knap de kade op.',5);}
-$('start').addEventListener('click',start);$('again').addEventListener('click',start);
+$('start').addEventListener('click',start);$('again').addEventListener('click',()=>showBoard(true));$('replay').addEventListener('click',start);
+
+/* ---------- scores ---------- */
+const LS='supertony.scores.v1', PUB='https://erikads77.github.io/Antonie-superman/';
+const fmt=n=>String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+function loadScores(){try{const a=JSON.parse(localStorage.getItem(LS));return Array.isArray(a)?a:[];}catch(e){return [];}}
+function saveScores(a){try{localStorage.setItem(LS,JSON.stringify(a.sort((x,y)=>y.s-x.s).slice(0,10)));}catch(e){}}
+function listScores(el,n,mark){
+  const a=loadScores().sort((x,y)=>y.s-x.s).slice(0,n);el.textContent='';
+  for(const r of a){const li=document.createElement('li'),b=document.createElement('b');li.textContent=String(r.n)+(r.c?' (uitdager)':'');b.textContent=fmt(r.s);li.appendChild(b);if(mark&&r.id===mark)li.className='me';el.appendChild(li);}
+  if(!a.length&&n>3){const li=document.createElement('li');li.className='empty';li.textContent='Nog geen scores op dit apparaat. Zet de eerste neer.';el.appendChild(li);}
+}
+let rival=null, myName='';
+try{myName=localStorage.getItem('supertony.name')||'';}catch(e){}
+try{const m=location.hash.match(/^#u=(.+)$/);if(m){const o=JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(m[1])))));
+  if(o&&typeof o.s==='number'&&o.s>0&&o.s<1e6){rival={n:String(o.n||'Iemand').slice(0,12),s:Math.round(o.s)};
+    const a=loadScores();if(!a.some(r=>r.c&&r.n===rival.n&&r.s===rival.s)){a.push({n:rival.n,s:rival.s,c:1,id:Date.now()});saveScores(a);}
+    $('tRival').textContent=rival.n+' daagt je uit: versla '+fmt(rival.s)+' punten.';$('tRival').hidden=false;}}}catch(e){}
+function showBoard(win){
+  $('win').hidden=true;$('board').hidden=false;$('bShare').hidden=true;$('bForm').hidden=false;
+  $('bTitle').textContent=win?'Deventer straalt!':'Uitgeteld!';$('bScore').textContent=fmt(W.score)+' punten';
+  $('bDetail').textContent=(win?'Tijdbonus '+fmt(W.tb)+' · hartjes '+fmt(W.hb):W.done+' van de 20 klussen gedaan')+' · koek '+W.koekN+'/'+KOEK+' · geheimen '+eggs.size+'/6'
+    +(rival?(W.score>rival.s?' · '+rival.n+' verslagen!':' · '+rival.n+' staat nog voor'):'');
+  $('bName').value=myName;listScores($('bList'),8);W.saved=false;setTimeout(()=>$('bName').focus(),50);
+}
+$('bForm').addEventListener('submit',e=>{e.preventDefault();if(W.saved)return;W.saved=true;
+  myName=$('bName').value.trim().slice(0,12)||'Anoniem';try{localStorage.setItem('supertony.name',myName);}catch(e2){}
+  const id=Date.now(),a=loadScores();a.push({n:myName,s:W.score,id});saveScores(a);$('bForm').hidden=true;listScores($('bList'),8,id);listScores($('tList'),3);});
+$('share').addEventListener('click',async()=>{
+  const n=($('bName').value.trim()||myName||'Iemand').slice(0,12),base=/github\.io$/.test(location.hostname)?location.origin+location.pathname:PUB;
+  const url=base+'#u='+encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify({n,s:W.score})))));
+  const text='Ik haalde '+fmt(W.score)+' punten met SuperTony in Deventer. Kun jij dat beter?';
+  const out=$('bShare');out.hidden=false;out.style.userSelect='text';
+  try{if(navigator.share){await navigator.share({title:'SuperTony',text,url});out.textContent='Uitdaging verstuurd.';return;}}catch(e){}
+  try{await navigator.clipboard.writeText(text+' '+url);out.textContent='Link gekopieerd. Plak hem in een bericht.';}
+  catch(e){out.textContent=text+' '+url;}
+});
+listScores($('tList'),3);
+
+/* ---------- gevaar ---------- */
+function hurt(msg){
+  if(P.inv>0||state!=='play')return;
+  W.lives--;P.inv=2;shake=.4;P.vx=-P.f*240;P.va=170;P.ground=false;beep(140);setTimeout(()=>beep(105),120);
+  if(P.carry){P.carry.st=0;P.carry.x=clamp(P.x,60,WORLD-60);P.carry=null;}
+  burst(P.x,GY-P.alt-60,10,['#ff5a5a','#fff'],200);updateHud();
+  if(W.lives<=0){state='over';keys.left=keys.right=keys.up=false;$('hint').classList.add('off');setTimeout(()=>showBoard(false),1100);}
+  else hint(msg+' Nog '+W.lives+(W.lives===1?' hartje.':' hartjes.'),3);
+}
+function hazards(dt){
+  if(W.done<W.total&&clock>8){
+    if((W.tBike-=dt)<0){W.tBike=8+rnd(clock)*7;const d=rnd(clock*2)<.72?-1:1;W.haz.push({k:'bike',dir:d,x:d<0?camX+viewW+420:camX-420});beep(1500);setTimeout(()=>beep(1500),140);
+      if(!W.seen.bike){W.seen.bike=1;hint('Fatbike op de kade! Vlieg eroverheen, of ram hem op snelheid met de scootmobiel.',4.5);}}
+    if((W.tGull-=dt)<0){W.tGull=11+rnd(clock*3)*8;const d=rnd(clock*4)<.5?-1:1;W.haz.push({k:'gull',dir:d,x:d<0?camX+viewW+330:camX-330,alt:118+rnd(clock*5)*34});
+      if(!W.seen.gull){W.seen.gull=1;hint('Meeuw in aantocht! Die pikt je alleen als je vliegt, dus blijf even laag.',4.5);}}
+  }
+  for(const h of W.haz){
+    if(h.out){h.x+=h.ovx*dt;h.oy+=h.ovy*dt;h.ovy+=600*dt;h.rot+=dt*9;continue;}
+    h.x+=h.dir*(h.k==='bike'?300:230)*dt;
+    const dx=Math.abs(h.x-P.x);
+    if(h.k==='bike'&&dx<44&&Math.abs(P.alt-groundAt(h.x))<40){
+      if(P.mode==='scoot'&&Math.abs(P.vx)>240){h.out=true;h.ovx=Math.sign(P.vx)*260;h.ovy=-330;h.oy=0;h.rot=0;W.score+=300;shake=.3;beep(220);
+        floats.push({x:h.x,y:GY-60,t:0,txt:'Fatbike gestuit! +300'});burst(h.x,GY-30,12,['#fff','#ffe27a'],220);updateHud();}
+      else hurt('Aangereden door een fatbike.');
+    }
+    if(h.k==='gull'&&!P.ground&&dx<38&&h.alt>P.alt+14&&h.alt<P.alt+128)hurt('Gepikt door een meeuw.');
+  }
+  W.haz=W.haz.filter(h=>h.out?h.oy<200:Math.abs(h.x-P.x)<viewW+700);
+}
 
 /* ---------- update ---------- */
 function update(dt){
@@ -343,6 +462,11 @@ function update(dt){
   }
   if(P.ground)P.energy=Math.min(1,P.energy+dt);
   P.pose=Math.max(0,P.pose-dt);P.puff=Math.max(0,P.puff-dt);
+  hazards(dt);if(state!=='play')return;P.inv=Math.max(0,P.inv-dt);
+  if(!W.cavia&&P.x<66){W.cavia=true;egg('cavia');W.lives=Math.min(4,W.lives+1);W.score+=250;updateHud();bells([988,1319]);
+    burst(P.x,GY-60,12,['#f3ede2','#b5713a','#ff7a1a'],180);floats.push({x:P.x+30,y:GY-110,t:0,txt:'Cavia mee! +1 hartje'});hint('Je cavia zat achter de tempel te wachten. Hij rijdt mee en geeft je een extra hartje.',4.5);}
+  if(!W.bell&&P.alt>=138&&Math.abs((P.x-camX)-(700-camX*.15))<28){W.bell=true;egg('beiaard');W.score+=500;updateHud();bells([523,659,784,1047,784,659,784,1047]);
+    floats.push({x:P.x,y:GY-P.alt-130,t:0,txt:'Beiaardier! +500'});burst(P.x,GY-P.alt-120,18,['#f2c94c','#fff'],260);hint('Je luidt het carillon van de Lebuinustoren. Heel Deventer hoort het.',4.5);}
   // pickups
   for(const l of W.litter)if(!l.got&&Math.abs(l.x-P.x)<38&&Math.abs(groundAt(l.x)-P.alt)<50){l.got=true;score(l.x,GY-groundAt(l.x)-10,'Afval opgeruimd.');}
   for(const c of W.cats)if(!c.saved&&Math.abs(c.x+18-P.x)<48&&P.alt>70){c.saved=true;score(c.x+18,GY-200,'Kat gered uit de boom.');}
@@ -360,7 +484,10 @@ function update(dt){
     else if(W.plats.some(p=>!p.ramp&&P.x>=p.a-22&&P.x<=p.b+22&&P.alt>=p.H-2))hint('Druk op Actie (E) om de oprit uit de kist neer te leggen.',1.2);
   }
   hintT-=dt;if(hintT<=0)$('hint').classList.add('off');
-  for(const k of W.koek)if(!k.got&&Math.abs(k.x-P.x)<36&&k.alt>P.alt-8&&k.alt<P.alt+126){k.got=true;W.koekN++;P.energy=1;beep(990);
+  for(const k of W.koek){if(k.bonus&&!k.got)k.alt=Math.max(groundAt(k.x)+18,k.alt-150*dt);
+    if(k.got||Math.abs(k.x-P.x)>=36||k.alt<=P.alt-8||k.alt>=P.alt+126)continue;
+    k.got=true;P.energy=1;beep(990);if(k.bonus){W.score+=50;floats.push({x:k.x,y:GY-k.alt-14,t:0,txt:'+50'});updateHud();continue;}
+    W.koekN++;W.score+=150;
     burst(k.x,GY-k.alt,8,['#8a4b22','#ffe27a'],150);floats.push({x:k.x,y:GY-k.alt-14,t:0,txt:'Deventer koek! Cape vol'});updateHud();}
   if(!rol&&P.ground&&Math.abs(P.vx)>300&&(dustT-=dt)<0){dustT=.05;sparks.push({x:P.x-P.f*34,y:GY-P.alt-4,vx:-P.f*40,vy:-30,t:0,life:.5,col:'rgba(230,225,215,.7)',r:4,g:0});}
   $('loc').textContent=P.x<700?'Havenkwartier · Zwarte Silo':P.x<1900?'IJsselkade':P.x<3800?'De Welle':'Pontje naar de Worp';
@@ -383,7 +510,8 @@ function lebuinus(x,p){
   ctx.fillStyle=dk;for(let i=0;i<5;i++){const wx=x+36+i*30;ctx.beginPath();ctx.moveTo(wx,GY-78);ctx.lineTo(wx,GY-112);ctx.quadraticCurveTo(wx+6,GY-126,wx+12,GY-112);ctx.lineTo(wx+12,GY-78);ctx.fill();}
   ctx.fillStyle=st;ctx.fillRect(x-20,GY-182,40,182);ctx.fillRect(x-23,GY-187,46,7);
   ctx.fillStyle=dk;ctx.fillRect(x-10,GY-176,7,30);ctx.fillRect(x+3,GY-176,7,30);
-  disc(ctx,x,GY-132,7.5,dk);disc(ctx,x,GY-132,6,mix('#b9bcbf','#fff8e4',p));line(ctx,[x,GY-132,x,GY-136.5],1,dk);line(ctx,[x,GY-132,x+3,GY-131],1,dk);
+  disc(ctx,x,GY-132,7.5,dk);disc(ctx,x,GY-132,6,mix('#b9bcbf','#fff8e4',p));{const n=new Date(),ha=(n.getHours()%12+n.getMinutes()/60)*Math.PI/6,ma=n.getMinutes()*Math.PI/30;   // de torenklok loopt gelijk
+    line(ctx,[x,GY-132,x+Math.sin(ha)*3.2,GY-132-Math.cos(ha)*3.2],1.2,dk);line(ctx,[x,GY-132,x+Math.sin(ma)*5,GY-132-Math.cos(ma)*5],.8,dk);}
   ctx.fillStyle=st;ctx.fillRect(x-14,GY-220,28,36);ctx.fillRect(x-17,GY-224,34,5);
   ctx.fillStyle=dk;for(let i=0;i<3;i++){const wx=x-11+i*8.5;ctx.beginPath();ctx.moveTo(wx,GY-188);ctx.lineTo(wx,GY-210);ctx.quadraticCurveTo(wx+2.5,GY-216,wx+5,GY-210);ctx.lineTo(wx+5,GY-188);ctx.fill();}
   ctx.fillStyle=rf;ctx.beginPath();ctx.moveTo(x-14,GY-224);ctx.quadraticCurveTo(x-17,GY-242,x,GY-248);ctx.quadraticCurveTo(x+17,GY-242,x+14,GY-224);ctx.fill();
@@ -516,7 +644,8 @@ function drawWater(p,t){
     ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x-18,y+20);ctx.lineTo(x-40,y+24);ctx.moveTo(x+330,y+21);ctx.lineTo(x+372,y+23);ctx.stroke();}
   for(let i=0;i<5;i++){x=900+i*940+Math.sin(t*.2+i)*60-camX*1.05;y=WY+10+(i%2)*5+Math.sin(t*2+i)*1;   // eenden
     if(x<-20||x>viewW+20)continue;ctx.fillStyle=i%2?'#6b4a36':'#e9e6df';ctx.beginPath();ctx.ellipse(x,y,7,3.5,0,0,7);ctx.fill();disc(ctx,x+6,y-4,3,i%2?'#2f6b4a':'#e9e6df');ctx.fillStyle='#f2a230';ctx.fillRect(x+8,y-4.5,4,1.8);}
-  const rain=state==='title'?0:clamp(1-p/.4,0,1);
+  if(dickens){ctx.fillStyle='rgba(255,255,255,.85)';for(let i=0;i<90;i++){const m=viewW+40,sx=((rnd(i)*m+Math.sin(t*.8+i)*14-t*12)%m+m)%m-20,sy=(rnd(i+5)*VH+t*(26+rnd(i)*30))%VH;ctx.beginPath();ctx.arc(sx,sy,1+rnd(i+2)*1.4,0,7);ctx.fill();}}
+  const rain=state==='title'||dickens?0:clamp(1-p/.4,0,1);
   if(rain>0){ctx.strokeStyle='rgba(235,242,246,.45)';ctx.lineWidth=1;ctx.beginPath();
     for(let i=0;i<110*rain;i++){const rx=((rnd(i)*viewW*1.4-t*90)%(viewW+40)+viewW+40)%(viewW+40)-20,ry=(rnd(i+5)*VH+t*(480+rnd(i)*160))%VH;ctx.moveTo(rx,ry);ctx.lineTo(rx-3,ry+10);}
     ctx.stroke();}
@@ -535,13 +664,39 @@ function drawPerson(x,base,i,has){
   const coat=['#8a5fb0','#3d7fb8'][i%2];
   line(ctx,[x-5,base,x-5,base-34],7,'#4a4f57');line(ctx,[x+5,base,x+5,base-34],7,'#4a4f57');
   line(ctx,[x,base-36,x,base-66],22,coat);disc(ctx,x,base-84,11,'#eac4a4');
+  const hat=dickens;
   ctx.fillStyle='#d9dde0';ctx.beginPath();ctx.arc(x,base-86,11.5,Math.PI,0);ctx.fill();if(i%2===0)disc(ctx,x,base-97,5,'#d9dde0');
   disc(ctx,x-4,base-84,1.2,'#222');disc(ctx,x+4,base-84,1.2,'#222');line(ctx,[x-4,base-79,x,base-77,x+4,base-79],1.2,'#8a4d3a');
+  if(hat){ctx.fillStyle='#15171a';ctx.fillRect(x-14,base-96,28,3.5);ctx.fillRect(x-9,base-116,18,21);ctx.fillStyle='#b3364a';ctx.fillRect(x-9,base-101,18,3);}
   if(has){ctx.fillStyle='#b98a55';ctx.fillRect(x-11,base-62,22,18);ctx.fillStyle='#e8d7b0';ctx.fillRect(x-2,base-62,4,18);
     line(ctx,[x-10,base-64,x-14,base-52],6,coat);line(ctx,[x+10,base-64,x+14,base-52],6,coat);}
   else{const w=Math.sin(clock*6)*5;line(ctx,[x-10,base-64,x-22,base-88+w],6,coat);line(ctx,[x+10,base-64,x+14,base-44],6,coat);}
 }
+function drawHazards(t){
+  for(const h of W.haz){
+    if(h.k==='gull'){const y=GY-h.alt+Math.sin(t*5+h.x*.01)*5,fl=Math.sin(t*14)*9;
+      ctx.save();ctx.translate(h.x,y);ctx.scale(h.dir,1);ctx.fillStyle='#aab3b8';ctx.beginPath();ctx.moveTo(-4,-2);ctx.lineTo(-16,-6-fl);ctx.lineTo(2,-1);ctx.fill();
+      ctx.fillStyle='#f4f6f6';ctx.beginPath();ctx.ellipse(0,0,13,5.5,0,0,7);ctx.fill();disc(ctx,11,-4,4.5,'#f4f6f6');disc(ctx,12.5,-5,1,'#111');
+      ctx.fillStyle='#f2a230';ctx.beginPath();ctx.moveTo(15,-4.5);ctx.lineTo(22,-2.5);ctx.lineTo(15,-1.5);ctx.fill();
+      ctx.fillStyle='#8f989d';ctx.beginPath();ctx.moveTo(-2,-2);ctx.lineTo(-10,-9-fl);ctx.lineTo(6,-2);ctx.fill();ctx.restore();continue;}
+    ctx.save();ctx.translate(h.x,GY-groundAt(h.x)+(h.out?h.oy:0));if(h.out)ctx.rotate(h.rot);ctx.scale(h.dir,1);
+    for(const wx of [-20,20]){ctx.strokeStyle='#15171a';ctx.lineWidth=7;ctx.beginPath();ctx.arc(wx,-12,9,0,7);ctx.stroke();disc(ctx,wx,-12,3,'#9aa3a8');}
+    line(ctx,[-20,-12,-4,-26,14,-26,20,-12],5,'#2f8f5b');line(ctx,[14,-26,18,-40],4,'#22262a');line(ctx,[13,-41,23,-39],4,'#22262a');
+    ctx.fillStyle='#15171a';rr(ctx,-16,-33,22,7,3);ctx.fill();
+    line(ctx,[-6,-34,2,-52],15,'#3a3f47');line(ctx,[2,-50,16,-41],6,'#3a3f47');line(ctx,[-6,-32,6,-18],7,'#22262a');
+    disc(ctx,7,-62,8,'#eac4a4');ctx.fillStyle='#15171a';ctx.beginPath();ctx.arc(7,-63,8.5,Math.PI,0);ctx.fill();ctx.fillRect(7,-64,12,3);
+    ctx.restore();
+  }
+}
+function drawWarnings(t){
+  if(state!=='play'||Math.floor(t*6)%2)return;
+  for(const h of W.haz){if(h.out)continue;const sx=h.x-camX;if(sx>-10&&sx<viewW+10)continue;
+    const x=sx<0?16:viewW-16,y=h.k==='bike'?GY-34:GY-h.alt;
+    ctx.fillStyle='#ffc93d';ctx.strokeStyle='#15171a';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,y-13);ctx.lineTo(x+12,y+9);ctx.lineTo(x-12,y+9);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.fillStyle='#15171a';ctx.fillRect(x-1.3,y-5,2.6,8);ctx.fillRect(x-1.3,y+4.5,2.6,2.6);}
+}
 function drawWorld(p){
+  if(!W.cavia)drawCavia(ctx,14,GY+Math.abs(Math.sin(clock*4))*-2,.9,clock,1);
   const leaf=mix('#75836f','#3fa650',p);
   drawSilo(p);drawStall(1640,'DEVENTER KOEK','#c8362e','#f2c230');drawStall(3740,'BOEKENMARKT','#27445e','#e9e6df');
   for(const c of W.cats){drawTree(c.x,GY,1,leaf);c.saved?drawCat(c.x+70,GY-9,true):drawCat(c.x+18,GY-170,false);}
@@ -606,14 +761,16 @@ function render(t){
   ctx.save();ctx.translate(P.x,GY-P.alt);
   if(P.puff>0){const k=1+Math.sin(P.puff/.35*Math.PI)*.14;ctx.scale(k,k);}
   if(!P.ground)ctx.rotate(-.13*P.f*Math.min(1,Math.abs(P.vx)/200));
-  drawHero(ctx,{mode:P.mode,f:P.f,t,wheel:P.wheel,speed:Math.abs(P.vx)/400,fly:P.ground?0:1,pose:P.pose,carry:!!P.carry});
+  if(!(P.inv>0&&Math.floor(t*14)%2))drawHero(ctx,{mode:P.mode,f:P.f,t,wheel:P.wheel,speed:Math.abs(P.vx)/400,fly:P.ground?0:1,pose:P.pose,carry:!!P.carry,cavia:W.cavia});
   ctx.restore();
+  drawHazards(t);
   for(const k of sparks){ctx.globalAlpha=1-k.t/k.life;disc(ctx,k.x,k.y,k.r,k.col);}
   ctx.globalAlpha=1;ctx.restore();
   drawWater(p,t);
   ctx.save();ctx.translate(-camX,0);ctx.font='800 15px Nunito, sans-serif';ctx.textAlign='center';
   for(const f of floats){ctx.globalAlpha=1-f.t/1.3;ctx.lineWidth=4;ctx.strokeStyle='#10222b';ctx.strokeText(f.txt,f.x,f.y-f.t*40);ctx.fillStyle='#fff';ctx.fillText(f.txt,f.x,f.y-f.t*40);}
   ctx.globalAlpha=1;ctx.textAlign='left';ctx.restore();
+  drawWarnings(t);
 }
 /* ---------- finale: naar de Pleiaden ---------- */
 const ease=x=>{x=clamp(x,0,1);return x*x*(3-2*x);};
@@ -667,13 +824,13 @@ function drawOutro(t){
   const fx0=viewW*.58,fy0=250,cx=fx0+(1-u)*viewW*.5,cy=fy0-(1-u)*150;
   for(let i=0;i<7;i++){const ox=(i-3)*26,r=24-Math.abs(i-3)*3.5,cg=ctx.createRadialGradient(cx+ox,cy+8,0,cx+ox,cy+8,r);
     cg.addColorStop(0,'rgba(215,232,255,.95)');cg.addColorStop(1,'rgba(150,190,255,0)');ctx.fillStyle=cg;ctx.beginPath();ctx.arc(cx+ox,cy+8,r,0,7);ctx.fill();}
-  const landed=oT>8.6, hop=ease((oT-8.9)/.9), f=landed?-1:1;
+  const landed=oT>8.6, hop=W.cavia?2:ease((oT-8.9)/.9), f=landed?-1:1;
   const hx=lerp(viewW*.2,fx0-8),hy=lerp(330,fy0)+Math.sin(t*3)*4*(1-u);
   const kx=cx+62+(hx-f*-14-cx-62)*hop, ky=cy+4+(hy-78-cy-4)*hop-Math.sin(hop*Math.PI)*46+Math.abs(Math.sin(t*5))*(hop>0?0:3);
   if(hop<1&&hop<=0)drawCavia(ctx,kx,ky,1.15,t,-1);
   ctx.save();ctx.translate(hx,hy);ctx.rotate(-.42*(1-u));ctx.scale(1.3,1.3);
-  drawHero(ctx,{mode:'rol',f,t,wheel:landed?0:t*5,speed:(1-u)*.9,fly:1-u,pose:oT>9.6?1:0});ctx.restore();
-  if(hop>0)drawCavia(ctx,kx,ky,1.15,t,-1);
+  drawHero(ctx,{mode:'rol',f,t,wheel:landed?0:t*5,speed:(1-u)*.9,fly:1-u,pose:oT>9.6?1:0,cavia:W.cavia});ctx.restore();
+  if(hop>0&&hop<=1)drawCavia(ctx,kx,ky,1.15,t,-1);
   ctx.globalAlpha=1;
 }
 function drawPortrait(){
@@ -692,7 +849,7 @@ function frame(ms){
   const t=ms/1000,dt=Math.min(.033,t-last||0);last=t;
   if(state==='play')update(dt);
   if(state==='outro'){oT+=dt;P.ground=false;P.f=1;P.vx=160;P.pose=0;P.alt+=(50+oT*300)*dt;P.x+=120*dt;P.wheel+=dt*4;
-    if(oT>10&&$('win').hidden){$('win').hidden=false;$('again').focus();}}
+    if(oT>10&&$('win').hidden&&$('board').hidden){$('win').hidden=false;$('again').focus();}}
   fx(dt);
   pShown+=(W.done/W.total-pShown)*Math.min(1,dt*2);
   camX=clamp(P.x-viewW*.4,0,Math.max(0,WORLD-viewW));
