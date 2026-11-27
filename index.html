@@ -268,8 +268,9 @@ const keys={left:false,right:false,up:false};
 function doSwitch(){
   if(state!=='play')return;
   if(!P.ground)return hint('Land eerst voordat je wisselt.');
-  if(P.carry)return hint('Bezorg eerst het pakket. Dat past alleen in het mandje van de scootmobiel.');
+  const drop=P.carry;if(drop){drop.st=0;drop.x=P.x;P.carry=null;}
   P.mode=P.mode==='rol'?'scoot':'rol';P.puff=.35;beep(330);updateHud();
+  if(drop)return hint('Het pakket staat hier even op de kade. Haal het straks weer op met de scootmobiel.',4);
   hint(P.mode==='rol'?'Rolstoel: wendbaar, en met de cape kun je vliegen.':'Scootmobiel: snel. Ram rommel van de stoep en bezorg pakketten.',2.6);
 }
 function doAct(){
@@ -346,9 +347,9 @@ function update(dt){
   for(const l of W.litter)if(!l.got&&Math.abs(l.x-P.x)<38&&Math.abs(groundAt(l.x)-P.alt)<50){l.got=true;score(l.x,GY-groundAt(l.x)-10,'Afval opgeruimd.');}
   for(const c of W.cats)if(!c.saved&&Math.abs(c.x+18-P.x)<48&&P.alt>70){c.saved=true;score(c.x+18,GY-200,'Kat gered uit de boom.');}
   for(const k of W.packs){
-    if(k.st===0&&Math.abs(k.x-P.x)<44&&P.alt<10){
-      if(rol)hint('Dit is te zwaar voor op schoot. Haal het op met de scootmobiel.',2.4);
-      else if(!P.carry){k.st=1;P.carry=k;beep(520);hint(k.what+' ligt in het mandje. Breng het naar '+k.who+', verderop rechts.',4);}
+    if(k.st===0&&Math.abs(k.x-P.x)<44&&Math.abs(groundAt(k.x)-P.alt)<20){
+      if(rol){if(hintT<=0)hint('Dit is te zwaar voor op schoot. Haal het op met de scootmobiel.',2.4);}
+      else if(!P.carry){k.st=1;P.carry=k;beep(520);hint(k.what+' ligt in het mandje. Breng het naar '+k.who+', verderop rechts. Loop je vast? Met Wissel zet je het even neer.',5);}
     }else if(k.st===1&&Math.abs(k.tx-P.x)<56){k.st=2;P.carry=null;score(k.tx,GY-groundAt(k.tx)-70,'Bezorgd bij '+k.who+'.');}
   }
   for(const b of W.blockers)if(b.cleared)b.anim=Math.min(1,b.anim+dt*2.5);
@@ -578,7 +579,7 @@ function drawWorld(p){
     else{ctx.fillStyle='#6fb7d9';rr(ctx,l.x-4,y-22+b,8,20,3);ctx.fill();ctx.fillStyle='#fff';ctx.fillRect(l.x-2,y-25+b,4,4);}
   }
   W.packs.forEach((k,i)=>{
-    if(k.st===0){const b=Math.sin(clock*3)*2;ctx.fillStyle=k.col;ctx.fillRect(k.x-15,GY-26+b,30,26);ctx.fillStyle='#f2c230';ctx.fillRect(k.x-3,GY-26+b,6,26);ctx.fillRect(k.x-15,GY-16+b,30,5);}
+    if(k.st===0){const b=Math.sin(clock*3)*2-groundAt(k.x);ctx.fillStyle=k.col;ctx.fillRect(k.x-15,GY-26+b,30,26);ctx.fillStyle='#f2c230';ctx.fillRect(k.x-3,GY-26+b,6,26);ctx.fillRect(k.x-15,GY-16+b,30,5);}
     drawPerson(k.tx+34,GY-groundAt(k.tx+34),i,k.st===2);
   });
   for(const k of W.koek){if(k.got)continue;const y=GY-k.alt+Math.sin(clock*3+k.x)*4;
