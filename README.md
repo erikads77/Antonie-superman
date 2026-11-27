@@ -1,7 +1,8 @@
-# Super Antonie
+# SuperTony
 
-Een browserspel over Super Antonie, een held op wielen met ooglapje, bril en oranje cape.
-Hij maakt de straat toegankelijk, schoon en groen, afwisselend in een rolstoel en op een scootmobiel.
+Een browserspel over SuperTony, de held op wielen van Deventer, met ooglapje, bril en oranje cape.
+Vanuit zijn kantoor in de Zwarte Silo houdt hij de Welle aan de IJssel toegankelijk, schoon en groen,
+afwisselend in een rolstoel en op een scootmobiel.
 
 Open `index.html` in een browser. Er is geen installatie of build nodig.
 
@@ -18,4 +19,7 @@ Open `index.html` in een browser. Er is geen installatie of build nodig.
 - **Scootmobiel**: snel. Ramt deelscooters van de stoep en vervoert pakketten in het mandje.
 
 Er zijn 20 taken: afval oprapen, bomen planten, deelscooters opruimen, katten redden,
-opritten leggen en pakketten bezorgen. Hoe meer er klaar is, hoe kleuriger de straat wordt.
+opritten leggen en pakketten bezorgen. Hoe meer er klaar is, hoe kleuriger Deventer wordt.
+Onderweg liggen 12 plakken Deventer koek die de cape opladen.
+
+Is alles gedaan, dan vliegt SuperTony naar de Pleiaden, waar hij met zijn cavia toekijkt op de vrede op aarde.
