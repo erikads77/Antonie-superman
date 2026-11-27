@@ -1,7 +1,7 @@
 # SuperTony
 
 Een browserspel over SuperTony, de held op wielen van Deventer, met ooglapje, bril en oranje cape.
-Vanuit zijn kantoor in de Zwarte Silo houdt hij de Welle aan de IJssel toegankelijk, schoon en groen,
+Vanuit zijn tempel, de Zwarte Silo, houdt hij de Welle aan de IJssel toegankelijk, schoon en groen,
 afwisselend in een rolstoel en op een scootmobiel.
 
 Open `index.html` in een browser. Er is geen installatie of build nodig.

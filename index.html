@@ -86,7 +86,7 @@ button:focus-visible{outline:3px solid var(--cape);outline-offset:2px}
     <div class="loc" id="loc">Havenkwartier</div>
     <div class="overlay" id="title">
       <h2>SuperTony</h2>
-      <p>De held op wielen van Deventer. Vanuit zijn kantoor in de Zwarte Silo houdt hij de Welle aan de IJssel toegankelijk, schoon en groen.</p>
+      <p>De held op wielen van Deventer. Vanuit zijn tempel, de Zwarte Silo, houdt hij de Welle aan de IJssel toegankelijk, schoon en groen.</p>
       <canvas id="portrait" width="760" height="400"></canvas>
       <div class="duo">
         <span><b>Rolstoel</b> wendbaar, vliegt met de cape</span>
@@ -457,7 +457,7 @@ function drawSilo(p){
   ctx.fillStyle=C.cape;ctx.beginPath();for(let i=0;i<6;i++){const a=i*Math.PI/3+Math.PI/6;ctx.lineTo(x+268+Math.cos(a)*15,GY-80+Math.sin(a)*15);}ctx.fill();
   line(ctx,[x+261,GY-86,x+275,GY-86],3.4,'#fff');line(ctx,[x+268,GY-86,x+268,GY-72],3.4,'#fff');
   ctx.fillStyle='#e9e6df';ctx.font='400 25px Bangers, Impact, sans-serif';ctx.textAlign='left';ctx.fillText('ZWARTE SILO',x+18,top+34);
-  ctx.font='800 9px Nunito, sans-serif';ctx.fillStyle=C.cape;ctx.fillText('KANTOOR SUPERTONY',x+19,top+48);
+  ctx.font='800 9px Nunito, sans-serif';ctx.fillStyle=C.cape;ctx.fillText('TEMPEL VAN SUPERTONY',x+19,top+48);
 }
 function drawStall(x,label,a,b){
   line(ctx,[x-34,GY,x-34,GY-62],3,'#5a4030');line(ctx,[x+34,GY,x+34,GY-62],3,'#5a4030');
